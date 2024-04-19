@@ -32,7 +32,7 @@ This documentation explains the logic that processes project summaries, generate
 
 ## Script Overview <a name="script-overview"></a>
 
-### Import Libraries <a name="import-librariesn"></a>
+### Import Libraries <a name="import-libraries"></a>
 The script begins by importing necessary libraries, including:
 - `boto3`: Amazon Web Services (AWS) SDK for Python.
 - `pandas` and `numpy`: For data handling and mathematical operations.
