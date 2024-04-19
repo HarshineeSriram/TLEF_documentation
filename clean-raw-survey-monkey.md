@@ -1,4 +1,4 @@
-# Table of Contents <a name="table-of-contents"></a>
+# Table of Contents <a name="table-of-contents"></a> 
 1. [Project Summary and Process Documentation](#project-summary-and-process-documentation)
    - [Script Overview](#script-overview)
      - [Import Libraries](#import-libraries)
