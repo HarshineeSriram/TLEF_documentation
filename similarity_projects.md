@@ -67,7 +67,8 @@ The `main` function in this script serves as the entry point and orchestrates th
   
 - **`store_context_and_embeddings`**:
   - First attempts to update existing embeddings by calling `check_and_update_embeddings`.
-  - If existing embeddings do not need updating, or if no embeddings exist, it directly stores new data in S3.
+  - If there are no existing embeddings for this project, the currently generated embeddings are directly stored as new data in S3.
+  - Note: If there are existing embeddings, `check_and_update_embeddings` has already taken care of them.
   - **Inputs**: Project context and embeddings, the bucket to store in, and the data key for storage.
   
 - **`generate_context_embeddings`**:
