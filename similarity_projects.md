@@ -26,7 +26,7 @@
    - [`store_context_and_embeddings`](#store-context-and-embeddings-detailed)
    - [`generate_context_embeddings`](#generate-context-embeddings-detailed)
 
-# Project Summary and Embedding Documentation
+# Project Summary and Embedding Documentation <a name="project-summary-and-embedding-documentation"></a>
 
 This documentation explains the logic that processes project summaries, generate embeddings, and identify similar projects based on these embeddings. The script primarily uses `pandas` for data manipulation, `boto3` for AWS interactions, `SentenceTransformer` for generating embeddings, and `numpy` for numerical operations.
 
