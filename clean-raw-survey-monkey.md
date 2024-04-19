@@ -13,9 +13,11 @@
 3. [Detailed Function Descriptions](#detailed-function-descriptions)
    - [`course_info_mapping`](#course-info-mapping-detailed)
    - [`year_mapping`](#year-mapping-detailed)
+   - [`check_string_for_20`](#check-string-for-20-detailed)
    - [`term_mapping`](#term-mapping-detailed)
    - [`ner_mapping`](#ner-mapping-detailed)
    - [`retrieve_member_info`](#retrieve-member-info-detailed)
+   - [`get-faculty`](#get-faculty-detailed)
    - [`generate_faculty_engagement_xlsx`](#generate-faculty-engagement-xlsx-detailed)
    - [`generate_project_details_xlsx`](#generate-project-details-xlsx-detailed)
 
@@ -171,7 +173,7 @@ The `year_mapping` function processes and standardizes academic year data within
    - For each entry in the column, it:
      - Handles known data errors explicitly, such as correcting specific typo errors.
      - Processes the text to extract year data, removing unwanted characters and formats through a series of helper functions (`process_colon`, `remove_except_numbers_dash_and_onward_no_space`, `remove_numeric_after_slash`).
-     - Checks for and processes mentions of the year 2020 specifically, due to its significance or prevalence in the dataset.
+     - Checks for and processes mentions of the year 2020 specifically, to ensure that 2020 is only extracted in correct contexts (e.g., 2019-20) and not in incorrect contexts (e.g., 2017-18).
 
 4. **Identify and List Years**:
    - Identifies all year references in the processed text using the initialized year range.
@@ -194,6 +196,59 @@ The `year_mapping` function processes and standardizes academic year data within
 
 - **Outputs**:
   - The function modifies the DataFrame `df` in-place, adding new columns for each processed column containing the cleaned and standardized list of years. No return value is provided; the primary output is the modified DataFrame.
+
+### `check_string_for_20` <a name="check-string-for-20-detailed"></a>
+```python
+def check_string_for_20(s):
+    # Check if '2020' is a standalone year in the string
+    if '2020' in s:
+        return s.replace('20', ''), True
+
+    # Find all occurrences of '20' in the string
+    index = 0
+    while index < len(s):
+        index = s.find('20', index)
+        if index == -1:
+            break
+
+        # Check if '20' is part of a 21st century year e.g., "2023", "2024-2025"
+        if (index > 0 and s[index - 1].isdigit() and s[index + 2:index + 4].isdigit()):
+            # Move past this occurrence
+            index += 2
+            continue
+
+        # Check if '20' is after a '-' or standalone e.g., "20" or "2019-20" AND there is nothing after "20" or it's not a number
+        if (index == 0 or s[index - 1] == '-') and (index + 2 >= len(s) or not s[index + 2].isdigit()):
+            return s.replace('20', ''), True
+
+        # Move to the next character to continue the search
+        index += 1
+
+    # If none of the conditions are met, return False
+    return s.replace('20', ''), False
+```
+The `check_string_for_20` function is designed to analyze strings for occurrences of the substring "20", particularly to identify instances where it may represent the year "2020" or a shortened year format like "20" in contexts such as "2019-20". This function plays a crucial role in data preprocessing by ensuring that year references are identified and processed accurately.
+
+#### Detailed Process Flow
+1. **Initial Check for '2020'**:
+   - The function first checks if '2020' is explicitly mentioned in the string. If found, it indicates that '2020' is likely referenced as a full year, and the string along with a flag `True` is returned after replacing occurrences of "20" to avoid duplicative processing.
+
+2. **Search for '20' Substring**:
+   - Iterates through the string to find occurrences of the substring "20". For each found instance, additional checks are performed to determine the context of its usage:
+     - **Year Validation**: Ensures that '20' is part of a valid year representation by checking surrounding characters. If '20' is flanked by other digits (e.g., "2023" or in a range "2024-2025"), it skips further processing for that occurrence.
+     - **Standalone or Range End**: If '20' appears at the start of the string or after a hyphen and is not followed by additional digits (suggesting a shortened year like "20" for "2020"), the function prepares to return with adjustments made to the string.
+
+3. **Return Processed Data**:
+   - Depending on the findings, the function returns the adjusted string and a Boolean flag:
+     - **True**: If '20' is determined to represent a significant year reference (either "2020" or a shortened "20").
+     - **False**: If no significant year usage is detected, indicating that '20' may appear in non-year contexts (like part of a number or word not related to dates).
+
+#### Inputs and Outputs
+- **Inputs**:
+  - `s`: A string potentially containing the substring '20' that needs to be checked for contextual significance as a year.
+
+- **Outputs**:
+  - Returns a tuple containing the modified string (with '20' removed in contexts where it represents a year) and a Boolean indicating whether '20' was found in a context that suggests it represents the year "2020". This helps in further data cleaning or transformation tasks where accurate year identification is crucial.
 
 ### `term_mapping` <a name="term-mapping-detailed"></a>
 ```python
@@ -445,6 +500,79 @@ The `retrieve_member_info` function is instrumental in extracting and organizing
 
 - **Outputs**:
   - Returns a dictionary where each key is a detected person name and each value is another dictionary containing attributes such as the team member's email, faculty, and any additional identified details. This output facilitates the enrichment of datasets with detailed and structured relational data about project participants.
+
+### `get_faculty` <a name="get-faculty-detailed"></a>
+```python
+def get_faculty(input_text):
+    faculty_list = [
+        "Faculty of Applied Science",
+        "Faculty of Arts",
+        "Faculty of Dentistry",
+        "Faculty of Education",
+        "First Nations House of Learning",
+        "Faculty of Forestry",
+        "Faculty of Graduate & Postdoctoral Studies",
+        "Faculty of Graduate and Postdoctoral Studies",
+        "Faculty of Land & Food Systems",
+        "Faculty of Land and Food Systems",
+        "Allard School of Law",
+        "Faculty of Medicine",
+        "Faculty of Pharmaceutical Sciences",
+        "Sauder School of Business",
+        "Faculty of Science",
+        "UBC Health",
+        "UBC Library",
+        "Vantage College",
+        "VP Academic",
+        "VP Students"
+    ]
+    
+    mentioned_faculties = {}
+    sorted_mentioned_faculties = []
+    
+    for faculty in faculty_list:
+        this_mentioned = []
+        start = 0
+        while True:
+            index = input_text.lower().find(faculty.lower(), start)
+            if index == -1:
+                break
+            this_mentioned.append(index)
+            start = index + 1
+            
+        if this_mentioned:
+            for idx in this_mentioned:
+                mentioned_faculties[idx] = faculty
+                
+    ordered_faculties = collections.OrderedDict(sorted(mentioned_faculties.items()))
+    return ordered_faculties
+```
+The `get_faculty` function systematically scans a given text for mentions of predefined faculty names from a list associated with a particular institution, such as a university. It helps in identifying and extracting specific faculty affiliations from unstructured data, organizing them by their occurrence order in the text for further processing or analysis.
+
+#### Detailed Process Flow
+1. **Define Faculty Names**:
+   - A list of predefined faculty names is established, representing the various faculties and departments within an institution. This list is comprehensive, covering common variations and names.
+
+2. **Initialize Collection**:
+   - Prepares a dictionary to store found faculties and their positions within the text, ensuring that each mention is captured accurately.
+
+3. **Search and Identify Mentions**:
+   - Iterates through each faculty name in the list and searches for its occurrence within the provided text:
+     - **Case-insensitive search**: Converts both the input text and faculty names to lowercase to ensure the search is case-insensitive.
+     - **Position tracking**: Records the start index of each mention, allowing for the sequential arrangement later.
+
+4. **Order by Occurrence**:
+   - Once all mentions are found and their positions recorded, the mentions are sorted based on their positions in the text. This sorting is crucial for maintaining the narrative or logical flow of faculty mentions when processing the text further.
+
+5. **Return Ordered Faculty Mentions**:
+   - Converts the sorted dictionary of faculty mentions into an ordered dictionary to maintain the sequence of mentions. This ordered list is then returned for use in further data processing steps.
+
+#### Inputs and Outputs
+- **Inputs**:
+  - `input_text`: The string from which faculty mentions need to be extracted. This could be a description, a list of affiliations, or any other form of textual data where faculty names might appear.
+
+- **Outputs**:
+  - Returns an `OrderedDict` where each key is the position of a faculty mention in the text and each value is the corresponding faculty name. This structured output is particularly useful for subsequent data enrichment, where maintaining the order of mentions is necessary to preserve contextual integrity.
 
 ### `generate_faculty_engagement_xlsx` <a name="generate-faculty-engagement-xlsx-detailed"></a>
 ```python
