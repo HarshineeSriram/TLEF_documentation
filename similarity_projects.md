@@ -119,7 +119,7 @@ def createDir(path):
 ```
 Creates a directory for storing cache files, with permissions to create intermediate directories if necessary.
 
-### `return_df` <a name="return_df"></a>
+### `return_df` <a name="return-df"></a>
 ```python
 def return_df(bucket, data_key):
     if "s3://" in data_key:
