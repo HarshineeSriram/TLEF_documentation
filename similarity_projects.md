@@ -103,7 +103,7 @@ The `main` function in this script serves as the entry point and orchestrates th
   - Processes multiple entries for a project to create a combined context string and its embedding.
   - **Outputs**: A tuple containing the combined context and its embedding.
 
-### S3 Interactions <a name="s3-integrations"></a>
+### S3 Interactions <a name="s3-interactions"></a>
 - The script uses `boto3` client methods to interact with AWS S3 for data storage and retrieval.
 
 ### Embedding Model <a name="embedding-model"></a>
