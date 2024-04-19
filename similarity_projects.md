@@ -81,7 +81,7 @@ The `main` function in this script serves as the entry point and orchestrates th
 ### Embedding Model
 - Utilizes `SentenceTransformer` for generating semantic embeddings of project summaries.
 
-## Detailed Function Descriptions
+## Expanded Function Descriptions
 
 ### `createDir`
 ```python
@@ -109,7 +109,73 @@ def return_df(bucket, data_key):
 Loads data from AWS S3 based on the file type and returns it as a pandas DataFrame.
 
 ### `find_all_summaries`
-Iterates through each project ID, processes the relevant data, and invokes embedding storage functions.
+```python
+def find_all_summaries(model='all-mpnet-base-v2'):
+    
+    embedding_model = SentenceTransformer('all-mpnet-base-v2', cache_folder=model_custom_path)
+    
+    for i in range(len(list(project_details_df.project_id))):
+        
+        this_project_id = project_details_df.project_id[i]
+        if this_project_id != this_project_id: # i.e., project_id is NaN
+            this_project_id = project_details_df.generated_grant_id[i] # use the automatically generated grant ID instead
+            
+        # Find all rows where the corresponding 'project_id' column values are equal to this_project_id
+        this_relevant_df = project_details_df.loc[project_details_df.project_id == this_project_id]
+        this_project_context = ""
+        this_project_context_embedding = None
+        
+        if this_relevant_df.empty:
+            # Whatever we have right now is the only occurrence
+            this_title = project_details_df.title[i]
+            this_summary = project_details_df.summary[i]
+        
+            if not this_title != this_title and not this_summary != this_summary: # i.e., both title and summary are not NaN
+
+                this_title_summary = this_title + '. ' + this_summary + ' ' # concatenate title and summary into 1 string
+                # create embeddings with the concatenated string
+                this_title_summary_embedding = embedding_model.encode(this_title_summary, convert_to_tensor=True)
+
+                this_project_context = this_title_summary
+                this_project_context_embedding = this_title_summary_embedding
+            
+        else:
+            # Determine the necessary context required to capture information about this project by examining all existing titles and summaries
+            this_project_context, this_project_context_embedding = generate_context_embeddings(this_relevant_df, embedding_model)
+        
+        store_context_and_embeddings(
+            this_project_context, 
+            this_project_context_embedding,
+            bucket = EMBEDDINGS_BUCKET,
+            data_key = this_project_id,
+            embedding_model=embedding_model
+        )
+```
+The `find_all_summaries` function is a core component of the script that processes project summaries to generate and store their embeddings. This function operates without direct inputs from function arguments, instead, it utilizes global variables predefined earlier in the script. Below is a detailed breakdown of its operations:
+
+#### Process Flow
+1. **Initialize Embedding Model**:
+   - A SentenceTransformer model, specifically 'all-mpnet-base-v2', is loaded with a specified cache directory to save and retrieve model components efficiently. This model is used to generate embeddings from textual data (project summaries).
+
+2. **Iterate Over Project Details**:
+   - The function iterates through the DataFrame `project_details_df` that contains project details, including project IDs and summaries. This DataFrame is expected to be loaded beforehand by the `return_df` function, using parameters from AWS Glue.
+
+3. **Process Each Project**:
+   - For each project entry in the DataFrame:
+     - The function checks if the project ID is missing (`NaN`). If so, it uses a generated grant ID as a fallback identifier.
+     - It then locates all DataFrame entries that correspond to this project ID and aggregates them if necessary.
+
+4. **Generate and Manage Context and Embeddings**:
+   - If only one entry exists for a project (i.e., the DataFrame filtered on the project ID has only one row), the function directly uses the title and summary from this row to create an embedding.
+   - If multiple entries exist, it calls `generate_context_embeddings` to concatenate and embed the aggregated context from all entries. This helps in creating a more comprehensive representation of the project.
+   - The context string (concatenated title and summary) and its resulting embedding are then either updated or newly stored in S3 by calling `store_context_and_embeddings`.
+
+5. **Store Context and Embeddings**:
+   - The `store_context_and_embeddings` function is invoked with the project's context, the corresponding embedding, the bucket name, and a data key that typically represents the project ID. This function either updates existing embeddings in S3 if they are below a certain similarity threshold or stores new embeddings if none exist.
+
+#### Inputs and Outputs
+- **Inputs**: The function does not take parameters directly; it operates on global variables and depends on the state of `project_details_df`.
+- **Outputs**: There are no return values as the function stores/updates data in an S3 bucket.
 
 ### `check_and_update_embeddings`
 Compares new embeddings with existing ones in S3, and updates them if the cosine similarity is below a specified threshold.
@@ -119,6 +185,3 @@ Stores or updates the context and embeddings in AWS S3, ensuring updates only oc
 
 ### `generate_context_embeddings`
 Concatenates and encodes context from project titles and summaries, updating embeddings if the new content provides additional context.
-
-### Usage
-To run this script, ensure AWS CLI is configured correctly with the necessary permissions, and the required libraries are installed in your Python environment. This script is typically executed in an AWS environment where AWS Glue jobs are configured. Adjust the parameters and paths according to your AWS setup.
