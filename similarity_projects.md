@@ -1,3 +1,31 @@
+- [Project Summary and Embedding Documentation](#project-summary-and-embedding-documentation)
+   * [Script Overview](#script-overview)
+      + [Import Libraries](#import-libraries)
+      + [Configuration Parameters](#configuration-parameters)
+      + [Helper Functions](#helper-functions)
+      + [Core Functions](#core-functions)
+      + [Execution Flow](#execution-flow)
+      + [Detailed Execution Flow](#detailed-execution-flow)
+   * [Main Function (`main`)](#main-function-main)
+   * [Subsequent Function Calls and Data Flow](#subsequent-function-calls-and-data-flow)
+      + [S3 Interactions](#s3-interactions)
+      + [Embedding Model](#embedding-model)
+   * [Expanded Function Descriptions](#expanded-function-descriptions)
+      + [`createDir`](#createdir)
+      + [`return_df`](#return_df)
+      + [`find_all_summaries`](#find_all_summaries)
+         - [Process Flow](#process-flow)
+         - [Inputs and Outputs](#inputs-and-outputs)
+      + [`check_and_update_embeddings`](#check_and_update_embeddings)
+         - [Detailed Process Flow](#detailed-process-flow)
+         - [Inputs and Outputs](#inputs-and-outputs-1)
+      + [`store_context_and_embeddings`](#store_context_and_embeddings)
+         - [Detailed Process Flow](#detailed-process-flow-1)
+         - [Inputs and Outputs](#inputs-and-outputs-2)
+      + [`generate_context_embeddings`](#generate_context_embeddings)
+         - [Detailed Process Flow](#detailed-process-flow-2)
+         - [Inputs and Outputs](#inputs-and-outputs-3)
+
 # Project Summary and Embedding Documentation
 
 This documentation explains the logic that processes project summaries, generate embeddings, and identify similar projects based on these embeddings. The script primarily uses `pandas` for data manipulation, `boto3` for AWS interactions, `SentenceTransformer` for generating embeddings, and `numpy` for numerical operations.
@@ -178,10 +206,193 @@ The `find_all_summaries` function is a core component of the script that process
 - **Outputs**: There are no return values as the function stores/updates data in an S3 bucket.
 
 ### `check_and_update_embeddings`
-Compares new embeddings with existing ones in S3, and updates them if the cosine similarity is below a specified threshold.
+```python
+def check_and_update_embeddings(bucket, data_key, current_context, current_embeddings, embedding_model, threshold=0.96):
+    """
+    Check if embeddings exist, compare them, and update if similarity is above threshold.
+    """
+    s3_client = boto3.client('s3')
+    context_key = f'{data_key}.pkl'
+    embeddings_key = f'{data_key}_embeddings.pkl'
+
+    try:
+        # Check if the context and embeddings files exist
+        context_object = s3_client.get_object(Bucket=bucket, Key=context_key)
+        embeddings_object = s3_client.get_object(Bucket=bucket, Key=embeddings_key)
+        
+        # Load existing context and embeddings
+        existing_context = pickle.loads(context_object['Body'].read())
+        existing_embeddings = pickle.loads(embeddings_object['Body'].read())
+
+        # Compare embeddings using cosine similarity
+        similarity = util.pytorch_cos_sim(current_embeddings, existing_embeddings)
+
+        if similarity < threshold:
+            # Update context and embeddings if similarity is low
+            updated_context = existing_context + " " + current_context
+            updated_embeddings = embedding_model.encode(updated_context, convert_to_tensor=True) # Update embeddings by running the embedding_model on the new context that combined existing and current contexts
+            updated_embeddings = pickle.dumps(updated_embeddings)
+            # Save updated context and embeddings
+            s3_client.put_object(Bucket=bucket, Key=context_key, Body=pickle.dumps(updated_context))
+            print(f"Stored in S3: Data_key = {context_key}. Stored embeddings shape = {updated_embeddings.shape}")
+            s3_client.put_object(Bucket=bucket, Key=embeddings_key, Body=updated_embeddings)
+            return True
+        else:
+            print(f"Skipping the update embeddings stage for {context_key}.")
+            return True
+        
+    except s3_client.exceptions.NoSuchKey:
+        # If the files do not exist, proceed with the original saving process
+        return False
+```
+The `check_and_update_embeddings` function is designed to manage and update project embeddings stored on AWS S3. It evaluates the necessity of updating existing embeddings based on their similarity to newly generated embeddings and handles the updating process if required.
+
+#### Detailed Process Flow
+1. **Setup AWS S3 Client**:
+   - Initializes a `boto3` client for interacting with AWS S3, which is used throughout the function to retrieve and store data.
+
+2. **Define Key Locations**:
+   - Constructs S3 object keys for both the context and embeddings using the provided `data_key`. This allows the function to target specific files in S3.
+
+3. **Attempt Retrieval of Existing Data**:
+   - Attempts to retrieve the existing context and embeddings from S3 using the constructed keys. If either does not exist (`NoSuchKey` exception), the function skips the update process and indicates that no existing data was found.
+
+4. **Deserialize Data**:
+   - If the context and embeddings are successfully retrieved, they are deserialized using `pickle` from the binary format stored in S3. This converts them back into Python objects that can be manipulated in the script.
+
+5. **Compare Embeddings**:
+   - Utilizes the `util.pytorch_cos_sim` function from the `SentenceTransformer` library to compute the cosine similarity between the newly generated embeddings and the existing ones. This similarity measurement helps determine how closely related the new context is to the old one.
+
+6. **Decision on Updating**:
+   - If the similarity is below the specified threshold (e.g., 0.96), it indicates that the new context provides sufficiently different information, and thus the embeddings should be updated.
+   - Constructs a new combined context by appending the new context to the existing one.
+   - Generates new embeddings for this updated context using the SentenceTransformer model.
+
+7. **Serialize and Store Updated Data**:
+   - Serializes the updated context and embeddings using `pickle` and uploads them back to S3, replacing the older versions.
+   - Provides logs or print statements indicating the status of the storage, including the shape of the stored embeddings, which is crucial for verifying the update.
+
+#### Inputs and Outputs
+- **Inputs**:
+  - `bucket`: The name of the S3 bucket where the data is stored.
+  - `data_key`: The base key used to locate the context and embeddings in S3.
+  - `current_context`: The newly generated context string.
+  - `current_embeddings`: The tensor representing the newly generated embeddings.
+  - `embedding_model`: The SentenceTransformer model used to generate embeddings.
+  - `threshold`: The cosine similarity threshold below which updates should be made.
+
+- **Outputs**:
+  - The function returns `True` if it proceeds with an update or skips it due to high similarity, and `False` if no existing data was found, indicating that new data should be stored instead.
 
 ### `store_context_and_embeddings`
-Stores or updates the context and embeddings in AWS S3, ensuring updates only occur when necessary.
+```python
+def store_context_and_embeddings(project_context, project_context_embedding, bucket, data_key, embedding_model):
+    if project_context_embedding is not None:  # If it is not empty
+        if not check_and_update_embeddings(
+            bucket=bucket, data_key=data_key, current_context=project_context, 
+            current_embeddings=project_context_embedding, embedding_model=embedding_model
+        ):
+            # If embeddings under this name (data_key) do not exist already (also, if they do, then they that situation has already been address with the check_and_update_embeddings function)
+            s3_client = boto3.client('s3')
+            context_bytes = pickle.dumps(project_context)
+            embeddings_bytes = pickle.dumps(project_context_embedding)
+
+            context_key = f'{data_key}.pkl'
+            embeddings_key = f'{data_key}_embeddings.pkl'
+            
+            s3_client.put_object(Bucket=bucket, Key=context_key, Body=context_bytes)
+            print(f"Stored in S3: Data_key = {context_key}. Stored embeddings shape = {project_context_embedding.shape}")
+            s3_client.put_object(Bucket=bucket, Key=embeddings_key, Body=embeddings_bytes)
+```
+The `store_context_and_embeddings` function performs the tasks of managing the storage and updating of project embeddings in AWS S3. This function ensures that the project context and its corresponding embeddings are either newly stored or appropriately updated in the S3 bucket.
+
+#### Detailed Process Flow
+1. **Check for Existing Embeddings**:
+   - The function begins by invoking `check_and_update_embeddings` to determine if existing embeddings should be updated. This function checks the existing embeddings stored in S3 against the newly generated embeddings to see if the similarity is below a specified threshold.
+
+2. **Decision on Storage or Update**:
+   - If `check_and_update_embeddings` returns `False`, it indicates that no existing embeddings were found for the given data key. In this case, the function proceeds to store the new context and embeddings.
+   - If `check_and_update_embeddings` returns `True`, it means that the existing embeddings have been successfully updated, and no further action is needed.
+
+3. **Serialize New Data**:
+   - If the decision is made to store new data, the function serializes the project context and embeddings into a binary format using `pickle`. This serialization is necessary to store the data in S3, which requires a byte-stream format.
+
+4. **Generate S3 Object Keys**:
+   - Constructs specific keys for storing the serialized context and embeddings. Typically, these keys are based on the project data key with appropriate suffixes to distinguish context from embeddings.
+
+5. **Upload to S3**:
+   - Uses the `boto3` S3 client to upload the serialized context and embeddings to the specified bucket under their respective keys. This process involves creating S3 objects with the binary data.
+
+6. **Logging**:
+   - The function logs or prints statements indicating the storage of the data, including details like the data key and the shape of the embeddings tensor.
+
+#### Inputs and Outputs
+- **Inputs**:
+  - `project_context`: The text representing the project context.
+  - `project_context_embedding`: The tensor of embeddings generated from the project context.
+  - `bucket`: The S3 bucket name where the data is to be stored.
+  - `data_key`: The identifier used to generate unique keys for storing the context and embeddings.
+  - `embedding_model`: The SentenceTransformer model, which might be required if additional embedding generation is needed during the update check.
+
+- **Outputs**:
+  - There are no explicit return values from this function. Its primary output is the side effect of data being stored or updated in S3.
 
 ### `generate_context_embeddings`
-Concatenates and encodes context from project titles and summaries, updating embeddings if the new content provides additional context.
+```python
+def generate_context_embeddings(relevant_df, embedding_model):
+    
+    context = ""
+    context_embedding = None
+    
+    # iterate through each rows of the "relevant" df
+    for index, row in relevant_df.iterrows():
+        if context_embedding is None:
+            current_context_embedding = embedding_model.encode(context, convert_to_tensor=True)
+        else:
+            current_context_embedding = context_embedding
+        
+        this_title = row.title
+        this_summary = row.summary
+        
+        if not this_title != this_title and not this_summary != this_summary: # i.e., both title and summary are not NaN
+            
+            this_title_summary = this_title + '. ' + this_summary + ' '
+            this_title_summary_embedding = embedding_model.encode(this_title_summary, convert_to_tensor=True)
+            
+            if util.cos_sim(current_context_embedding, this_title_summary_embedding)[0] < 0.96: # The new title+summary has some differences
+                context += this_title_summary
+                context_embedding = embedding_model.encode(context, convert_to_tensor=True)
+                
+    return context, context_embedding
+```
+The `generate_context_embeddings` function creates a contextual representation of a project by combining the information from multiple entries, such as titles and summaries. It then generates a corresponding embedding for this combined context using a SentenceTransformer model. This function is particularly useful when multiple entries for a single project need to be aggregated to form a more comprehensive understanding.
+
+#### Detailed Process Flow
+1. **Initialize Context Variables**:
+   - Starts by initializing an empty string for `context` and setting `context_embedding` to `None`. These will store the aggregated textual context and its corresponding embedding.
+
+2. **Iterate Through DataFrame Rows**:
+   - Iterates through each row of a provided DataFrame (`relevant_df`) which contains multiple entries related to a single project. This DataFrame is filtered prior to the call, containing only relevant entries for a specific project ID.
+
+3. **Concatenate Context**:
+   - For each row, extracts the title and summary and checks if they are not `NaN`. Concatenates each valid title and summary to the `context` string with formatting to ensure proper sentence separation.
+
+4. **Generate Embedding for Updated Context**:
+   - After each concatenation, checks if a `context_embedding` already exists. If it does, the function updates this embedding by encoding the updated context using the SentenceTransformer model.
+   - If no embedding has been created yet (i.e., `context_embedding` is `None`), the function generates a new embedding from the current `context`.
+
+5. **Optimize Embedding Updates**:
+   - The embedding is updated only if the newly added title and summary significantly change the context. This is determined by calculating the cosine similarity between the current `context_embedding` and the embedding of the newly added title-summary. If the similarity is below a threshold (e.g., 0.96), the context is considered significantly different, prompting an embedding update.
+
+6. **Return Combined Context and Embedding**:
+   - Once all entries have been processed, returns the combined `context` and its corresponding `context_embedding`.
+
+#### Inputs and Outputs
+- **Inputs**:
+  - `relevant_df`: A pandas DataFrame containing relevant entries (like titles and summaries) for a specific project.
+  - `embedding_model`: A pre-loaded SentenceTransformer model used to generate embeddings.
+
+- **Outputs**:
+  - Returns a tuple containing:
+    - `context`: A string that aggregates all relevant titles and summaries.
+    - `context_embedding`: A tensor representing the embedding of the combined context.
