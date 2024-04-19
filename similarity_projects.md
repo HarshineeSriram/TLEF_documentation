@@ -1,4 +1,4 @@
-# Table of Contents
+# Table of Contents <a name="table-of-contents"></a>
 1. [Project Summary and Embedding Documentation](#project-summary-and-embedding-documentation)
    - [Script Overview](#script-overview)
      - [Import Libraries](#import-libraries)
@@ -396,3 +396,5 @@ The `generate_context_embeddings` function creates a contextual representation o
   - Returns a tuple containing:
     - `context`: A string that aggregates all relevant titles and summaries.
     - `context_embedding`: A tensor representing the embedding of the combined context.
+
+[🔼 Back to top](#table-of-contents)
