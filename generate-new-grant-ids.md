@@ -1,5 +1,7 @@
-# Table of Contents <a name="table-of-contents"></a> 
-1. [Introduction](#introduction)
+# Preparing the dataset for semantic search to determine similar projects <a name="similar-projects-data-cleaning-documentation"></a>
+
+## Table of Contents <a name="table-of-contents"></a> 
+1. [Script Overview](#script-overview)
 2. [Configuration Parameters](#configuration-parameters)
 3. [Function Descriptions](#function-descriptions)
    - [return_df](#return-df)
@@ -9,10 +11,10 @@
 4. [Main Script Execution](#main-script-execution)
 5. [Glue Job Trigger](#glue-job-trigger)
 
-# Introduction <a name="introduction"></a>
+## Script Overview <a name="script-overview"></a>
 This script handles the generation of unique grant IDs and the initiation of the Glue job to generate the similar projects database for further data processing.
 
-# Configuration Parameters <a name="configuration-parameters"></a>
+## Configuration Parameters <a name="configuration-parameters"></a>
 The script retrieves configuration parameters using the `getResolvedOptions` function from AWS Glue utilities, which include:
 - `BUCKET_NAME`: The main bucket for storing project details.
 - `PROJECT_DETAILS_S3URI`: The S3 URI for the project details Excel file.
@@ -23,8 +25,8 @@ from awsglue.utils import getResolvedOptions
 args = getResolvedOptions(sys.argv, ["BUCKET_NAME", "PROJECT_DETAILS_S3URI", "EMBEDDINGS_BUCKET"])
 ```
 
-# Function Descriptions <a name="function-descriptions"></a>
-## `return_df` <a name="return-df"></a>
+## Function Descriptions <a name="function-descriptions"></a>
+### `return_df` <a name="return-df"></a>
 This function loads data from a specified S3 bucket into a pandas DataFrame. It accepts the bucket name and data key. If the data key is a full S3 URI, it uses it directly; otherwise, it formats it as `s3://{bucket}/{data_key}`.
 
 ```python
@@ -34,7 +36,7 @@ def return_df(bucket, data_key):
     return df
 ```
 
-## `store_df` <a name="store-df"></a>
+### `store_df` <a name="store-df"></a>
 Stores a DataFrame into an S3 bucket at a specified location. It formats the destination as `s3://{bucket}/{data_key}` and checks if the target file type is Parquet to call `df.to_parquet`, otherwise it uses `df.to_excel`.
 
 ```python
@@ -46,7 +48,7 @@ def store_df(df, bucket, data_key):
         df.to_excel(data_location, index=False)
 ```
 
-## `assign_grant_ids` <a name="assign-grant-ids"></a>
+### `assign_grant_ids` <a name="assign-grant-ids"></a>
 Processes each project in a DataFrame to assign a unique grant ID based on several attributes such as the project faculty, type, and principal investigator's name.
 
 ```python
@@ -130,7 +132,7 @@ def assign_grant_ids(project_details_df):
     return project_details_df
 ```
 
-## `convert_summary_to_strings` <a name="convert-summary-to-strings"></a>
+### `convert_summary_to_strings` <a name="convert-summary-to-strings"></a>
 Converts the 'summary' column of a DataFrame to strings, handling NaN values by replacing them with empty strings. This is useful for preparing data for further text processing or analysis.
 
 ```python
@@ -150,7 +152,7 @@ def convert_summary_to_strings(project_details_df):
     return project_details_df
 ```
 
-# Main Script Execution <a name="main-script-execution"></a>
+## Main Script Execution <a name="main-script-execution"></a>
 The script processes an Excel file from an S3 URI to assign new grant IDs and convert summaries to strings. Then, it stores the updated DataFrame back to S3 in Parquet format.
 
 ```python
@@ -159,7 +161,7 @@ processed_df = convert_summary_to_strings(assign_grant_ids(project_details_df))
 store_df(processed_df, BUCKET_NAME, f"staging/project_details/project_details_with_new_ids_{project_details_df['funding_year'][0]}.parquet")
 ```
 
-# Glue Job Trigger <a name="glue-job-trigger"></a>
+## Glue Job Trigger <a name="glue-job-trigger"></a>
 Initiates an AWS Glue job to generate embeddings and similar projects, passing necessary parameters like bucket names and project details URI.
 
 ```python
