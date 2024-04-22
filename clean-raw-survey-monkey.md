@@ -6,7 +6,7 @@
      - [Helper Functions](#helper-functions)
      - [Main Data Processing Functions](#main-data-processing-functions)
      - [Execution Flow](#execution-flow)
-2. [Main Function (`tlef_raw_data_preprocessing`)](#main-function-tlef_raw_data_preprocessing)
+2. [Main Function (`raw_data_preprocessing`)](#main-function-raw_data_preprocessing)
    - [Data Retrieval and Preprocessing](#data-retrieval-and-preprocessing)
    - [Mapping and Cleaning Data](#mapping-and-cleaning-data)
    - [Final Outputs and S3 Interaction](#final-outputs-and-s3-interaction)
@@ -23,7 +23,7 @@
 
 # Project Summary and Process Documentation <a name="project-summary-and-process-documentation"></a>
 
-This documentation outlines the processes and methodologies implemented in the Python script designed to preprocess and analyze project data within an educational context, particularly focusing on faculty engagement and project details for TLEF (Teaching and Learning Enhancement Fund) projects.
+This documentation outlines the processes and methodologies implemented in the Python script designed to preprocess and analyze project data within an educational context, particularly focusing on faculty engagement and project details for the analysis of funded projects.
 
 ## Script Overview <a name="script-overview"></a>
 
@@ -46,7 +46,7 @@ The script imports various libraries for data manipulation, AWS interactions, an
 ### Execution Flow <a name="execution-flow"></a>
 - The script is structured to process data in several stages, from initial data retrieval to final data cleaning and output generation, with specific functions designated for each step in the process.
 
-## Main Function (`tlef_raw_data_preprocessing`) <a name="main-function-tlef_raw_data_preprocessing"></a>
+## Main Function (`raw_data_preprocessing`) <a name="main-function-raw_data_preprocessing"></a>
 
 ### Data Retrieval and Preprocessing <a name="data-retrieval-and-preprocessing"></a>
 - **Initial Data Retrieval**: Data is fetched from S3 using the `return_df` function based on file type and path.
