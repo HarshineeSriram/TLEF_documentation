@@ -1,30 +1,11 @@
-# Table of Contents <a name="table-of-contents"></a> 
-1. [Project Summary and Embedding Documentation](#project-summary-and-embedding-documentation)
-   - [Script Overview](#script-overview)
-     - [Import Libraries](#import-libraries)
-     - [Configuration Parameters](#configuration-parameters)
-     - [Helper Functions](#helper-functions)
-     - [Core Functions](#core-functions)
-     - [Execution Flow](#execution-flow)
-     - [Detailed Execution Flow](#detailed-execution-flow)
-2. [Main Function (`main`)](#main-function-main)
-   - [Initial Process](#initial-process)
-   - [Generate Embeddings Database](#generate-embeddings-database)
-   - [Generate Similar Projects Database](#generate-similar-projects-database)
-   - [Save Similar Projects Database](#save-similar-projects-database)
-3. [Subsequent Function Calls and Data Flow](#subsequent-function-calls-and-data-flow)
-   - [`find_all_summaries`](#find-all-summaries)
-   - [`store_context_and_embeddings`](#store-context-and-embeddings)
-   - [`generate_context_embeddings`](#generate-context-embeddings)
-4. [S3 Interactions](#s3-interactions)
-5. [Embedding Model](#embedding-model)
-6. [Expanded Function Descriptions](#expanded-function-descriptions)
-   - [`createDir`](#createdir)
-   - [`return_df`](#return-df)
-   - [`find_all_summaries`](#find-all-summaries-detailed)
-   - [`check_and_update_embeddings`](#check-and-update-embeddings-detailed)
-   - [`store_context_and_embeddings`](#store-context-and-embeddings-detailed)
-   - [`generate_context_embeddings`](#generate-context-embeddings-detailed)
+| Index | Description |
+| ----- | ----------- |
+| [Project Summary and Embedding Documentation](#project-summary-and-embedding-documentation) | Overview of the script, including configuration, helper and core functions, and execution flow details |
+| [Main Function (`main`)](#main-function-main) | Describes the initial process, functions to generate and save embeddings, and similar projects databases |
+| [Subsequent Function Calls and Data Flow](#subsequent-function-calls-and-data-flow) | Details on the operations of `find_all_summaries`, `store_context_and_embeddings`, and `generate_context_embeddings` |
+| [S3 Interactions](#s3-interactions) | Describes how the script interacts with AWS S3 for data storage and retrieval |
+| [Embedding Model](#embedding-model) | Explanation of the embedding model used for generating project embeddings |
+| [Expanded Function Descriptions](#expanded-function-descriptions) | Detailed explanations of specific functions like `createDir`, `return_df`, and others involved in data processing |
 
 # Project Summary and Embedding Documentation <a name="project-summary-and-embedding-documentation"></a>
 
