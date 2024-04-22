@@ -1,4 +1,6 @@
-# Table of Contents <a name="table-of-contents"></a> 
+# Cleaning the raw dataset <a name="dataset-cleaning-documentation"></a>
+
+## Table of Contents <a name="table-of-contents"></a> 
 1. [Project Summary and Process Documentation](#project-summary-and-process-documentation)
    - [Script Overview](#script-overview)
      - [Import Libraries](#import-libraries)
@@ -21,11 +23,8 @@
    - [`generate_faculty_engagement_xlsx`](#generate-faculty-engagement-xlsx-detailed)
    - [`generate_project_details_xlsx`](#generate-project-details-xlsx-detailed)
 
-# Project Summary and Process Documentation <a name="project-summary-and-process-documentation"></a>
-
-This documentation outlines the processes and methodologies implemented in the Python script designed to preprocess and analyze project data within an educational context, particularly focusing on faculty engagement and project details for the analysis of funded projects.
-
 ## Script Overview <a name="script-overview"></a>
+This documentation outlines the processes and methodologies implemented in the Python script designed to preprocess and analyze project data within an educational context, particularly focusing on faculty engagement and project details for the analysis of funded projects.
 
 ### Import Libraries <a name="import-libraries"></a>
 The script imports various libraries for data manipulation, AWS interactions, and processing:
